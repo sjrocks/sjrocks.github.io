@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Home</title>
+    <meta charset="utf-8">
+    <style>
+        .line {
+            fill: none;
+            stroke-width: 1px;
+        }
+
+        .axis path {
+            stroke: black;
+            stroke-width: 1px;
+            fill: none;
+            shape-rendering: crispEdges;
+        }
+
+        .tick line {
+            stroke: black;
+            stroke-width: 1px;
+        }
+
+        .mySlides {
+            display: none;
+        }
+
+        .bubbles {
+          stroke-width: 1px;
+          stroke: black;
+          opacity: .8
+        }
+
+        .bubbles:hover {
+          stroke: black;
+        }
+    </style>
+  </head>
+  <body>
+    <h1><u><i><center>CS 498 - Narrative Data Visualization</center></i></u></h1>
+    <!-- Load d3.js -->
+    <script src="https://d3js.org/d3.v5.min.js"></script>
+    <!-- Slide Show-->
+    <link rel="stylesheet" href="https://www.w3schools.com/w3css/4/w3.css">
+
+    <script>
+        async function createChart(chartType, fuel) {
+          var margin = { top: 40, right: 100, bottom: 80, left: 100 };
+          var height = 600 - margin.top - margin.bottom;
+          var width = 960 - margin.left - margin.right;
+
+          // append the svg object to the body of the page
+          var svg = d3.select("#" + chartType)
+            .append("svg")
+              .attr("width", width + margin.left + margin.right)
+              .attr("height", height + margin.top + margin.bottom)
+            .append("g")
+              .attr("transform",
+                    "translate(" + margin.left + "," + margin.top + ")");
+
+          await d3.csv("https://flunky.github.io/cars2017.csv")
+            .then(function (data) {
+              data.forEach(
+                function (d) {
+                  d.AverageCityMPG = +d.AverageCityMPG;
+                  d["AverageHighwayMPG"] = +d["AverageHighwayMPG"];
+                  d.EngineCylinders = +d.EngineCylinders;
+                }
+              );
+
+              if (fuel != "AllFuel") {
+                data = data.filter(function(d){return d.Fuel  == fuel;});
+              }
+
+            var x = d3.scaleLinear()
+              .domain([0, 150])
+              .range([ 0, width ]);
+            svg.append("g")
+              .attr("transform", "translate(0," + height + ")")
+              .call(d3.axisBottom(x).ticks(10));
+
+            svg.append("text")
+                .attr("text-anchor", "end")
+                .attr("x", width)
+                .attr("y", height+50 )
+                .text("Average City MPG");
+
+            var y = d3.scaleLinear()
+              .domain([0, 122])
+              .range([ height, 0]);
+            svg.append("g")
+              .call(d3.axisLeft(y));
+
+            svg.append("text")
+                .attr("text-anchor", "end")
+                .attr("x", 0)
+                .attr("y", -20 )
+                .text("Average Highway MPG")
+                .attr("text-anchor", "start")
+
+            var z = d3.scaleSqrt()
+              .domain([0, 12])
+              .range([ 2, 30]);
+
+            var myColor = d3.scaleOrdinal()
+              .domain([0, 2, 3, 4, 6, 8, 10, 12 ])
+              .range(d3.schemeSet2);
+
+            var tooltip = d3.select("#" + chartType)
+              .append("div")
+                .style("opacity", 0)
+                .attr("class", "tooltip")
+                .style("background-color", "black")
+                .style("border-radius", "5px")
+                .style("padding", "10px")
+                .style("color", "white")
+
+            var showTooltip = function(d) {
+              tooltip
+                .transition()
+                .duration(200)
+              tooltip
+                .style("opacity", 1)
+                .html("Make: " + d.Make + "<br> EngineCylinders: " + d.EngineCylinders + "<br> Fuel: " + d.Fuel)
+                .style("left", (d3.mouse(this)[0]+30) + "px")
+                .style("top", (d3.mouse(this)[1]+30) + "px")
+            }
+            var moveTooltip = function(d) {
+              tooltip
+                .style("left", (d3.mouse(this)[0]+30) + "px")
+                .style("top", (d3.mouse(this)[1]+30) + "px")
+            }
+            var hideTooltip = function(d) {
+              tooltip
+                .transition()
+                .duration(200)
+                .style("opacity", 0)
+            }
+
+            var highlight = function(d){
+              d3.selectAll(".bubbles").style("opacity", .05)
+              d3.selectAll(".bubbles."+ d).style("opacity", 1)
+            }
+
+            var noHighlight = function(d){
+              d3.selectAll(".bubbles").style("opacity", 1)
+            }
+
+            svg.append('g')
+              .selectAll("dot")
+              .data(data)
+              .enter()
+              .append("circle")
+                .attr("class", function(d) { return "bubbles " + d.EngineCylinders })
+                .attr("cx", function (d) { return x(d.AverageCityMPG); } )
+                .attr("cy", function (d) { return y(d["AverageHighwayMPG"]); } )
+                .attr("r", function (d) { return z(d.EngineCylinders); } )
+                .style("fill", function (d) { return myColor(d.EngineCylinders); } )
+              .on("mouseover", showTooltip )
+              .on("mousemove", moveTooltip )
+              .on("mouseleave", hideTooltip )
+
+              var size = 20
+              var allgroups = [0, 2, 3, 4, 6, 8, 10, 12]
+              svg.selectAll("myrect")
+                .data(allgroups)
+                .enter()
+                .append("circle")
+                  .attr("cx", 750)
+                  .attr("cy", function(d,i){ return 10 + i*(size+5)})
+                  .attr("r", 7)
+                  .style("fill", function(d){ return myColor(d)})
+                  .on("mouseover", highlight)
+                  .on("mouseleave", noHighlight)
+
+              svg.selectAll("mylabels")
+                .data(allgroups)
+                .enter()
+                .append("text")
+                  .attr("x", 750 + size*.8)
+                  .attr("y", function(d,i){ return i * (size + 5) + (size/2)})
+                  .style("fill", function(d){ return myColor(d)})
+                  .text(function(d){ return d})
+                  .attr("text-anchor", "left")
+                  .style("alignment-baseline", "middle")
+                  .on("mouseover", highlight)
+                  .on("mouseleave", noHighlight)
+            }) ;
+        }
+    </script>
+
+    <div class="w3-content w3-display-container">
+
+        <div id="About" class="mySlides" style="width:100%">
+          <h2>Automobile Fuel Efficiency</h2>
+          <h3>Project Data</h3>
+            Data used in this project contains average data for 2017 automobile manufacturers. It can be downloaded from https://flunky.github.io/cars2017.csv.
+            Visualization provides a good insight for fuel effiency.
+          <h3>1. Hybrid Structure</h3>
+            The Visualization follows the Martini Glass hybrid structure. Initial 3 scenses provides insight for different kind of fuels and the last one contains all data.
+          <h3>2. Scenes</h3>
+            Consecutive scenes reflecting the effeciency per fuel in order - Gasoline, Diesel, Electricity. Last scene has no filters and contains all data.
+          <h3>3. Annotations</h3>
+            Paragraphs and tool tips provides the Annotations.
+          <h3>4. Parameters</h3>
+            Data and Fuel type serves as the parameter.
+          <h3>5. Triggers</h3>
+            Slide show with forward and backword buttons are the triggers.
+        </div>
+
+        <div id="gasolineEfficiency" class="mySlides" style="width:100%">
+          <h2> Gasoline Automobiles Efficiency </h2>
+          <p> This chart clearly shows that the maximum fuel efficiency is for automobiles with 4 or 3 engine cylinders.
+          </p>
+        </div>
+
+        <div id="dieselEfficiency" class="mySlides" style="width:100%">
+          <h2> Diesel Automobiles Efficiency </h2>
+          <p> This chart clearly shows that the maximum fuel efficiency is for automobiles with 4 engine cylinders.
+          </p>
+        </div>
+
+        <div id="electricEfficiency" class="mySlides" style="width:100%">
+          <h2> Electric Automobiles Efficiency </h2>
+          <p> Clearly electric automobiles are most fuel efficient.
+          </p>
+        </div>
+
+        <div id="AllEfficiency" class="mySlides" style="width:100%">
+          <h2> Automobiles Efficiency </h2>
+          <p> Clearly Electric Automobiles are the most effecient. Diesel automoniles are generally effecient. Gasoline are more effecient for 3 or 4 engines.
+          </p>
+        </div>
+
+        <button class="w3-button w3-black w3-display-left" onclick="plusDivs(-1)">&#10094;</button>
+        <button class="w3-button w3-black w3-display-right" onclick="plusDivs(1)">&#10095;</button>
+    </div>
+
+    <script>
+        var slideIndex = 1;
+        showDivs(slideIndex);
+
+        function plusDivs(n) {
+            showDivs(slideIndex += n);
+        }
+
+        function showDivs(n) {
+            var i;
+            var x = document.getElementsByClassName("mySlides");
+            if (n > x.length) { slideIndex = 1 }
+            if (n < 1) { slideIndex = x.length }
+            for (i = 0; i < x.length; i++) {
+                x[i].style.display = "none";
+            }
+            x[slideIndex - 1].style.display = "block";
+        }
+        createChart("gasolineEfficiency", "Gasoline");
+        createChart("dieselEfficiency", "Diesel");
+        createChart("electricEfficiency", "Electricity");
+        createChart("AllEfficiency", "AllFuel");
+
+    </script>
+  </body>
+</html>
